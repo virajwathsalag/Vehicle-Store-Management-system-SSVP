@@ -1,0 +1,734 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>GuerrillaNtp</name>
+    </assembly>
+    <members>
+        <member name="T:GuerrillaNtp.NtpClient">
+            <summary>
+            Client for RFC4330-compliant SNTP/NTP server.
+            </summary>
+            <remarks>
+            <para>
+            See <a href="https://guerrillantp.machinezoo.com/">project homepage</a> for guidance on how to use GuerrillaNtp.
+            Most applications should just call <see cref="M:GuerrillaNtp.NtpClient.Query" /> or <see cref="M:GuerrillaNtp.NtpClient.QueryAsync(System.Threading.CancellationToken)" /> once
+            and then access <see cref="P:GuerrillaNtp.NtpClock.UtcNow" /> or <see cref="P:GuerrillaNtp.NtpClock.Now" />
+            on the returned <see cref="T:GuerrillaNtp.NtpClock" /> or the one stored in <see cref="P:GuerrillaNtp.NtpClient.Last" />.
+            </para>
+            <para>
+            It is recommended to have only one instance of this class in the application.
+            You can use <see cref="F:GuerrillaNtp.NtpClient.Default" /> one to query pool.ntp.org.
+            Socket is allocated anew for every query. There is no need to dispose the client.
+            This class is intended to be used by one thread at a time,
+            but multi-threaded access is nevertheless tolerated and safe.
+            </para>
+            <para>
+            It is application responsibility to be a good netizen,
+            which most importantly means using reasonable polling intervals
+            and exponential backoff when querying public NTP servers.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:GuerrillaNtp.NtpClient.DefaultHost">
+            <summary>
+            Default SNTP host (pool.ntp.org).
+            </summary>
+        </member>
+        <member name="F:GuerrillaNtp.NtpClient.DefaultPort">
+            <summary>
+            Default SNTP port (123).
+            </summary>
+        </member>
+        <member name="F:GuerrillaNtp.NtpClient.DefaultEndpoint">
+            <summary>
+            Default SNTP endpoint (pool.ntp.org).
+            </summary>
+        </member>
+        <member name="F:GuerrillaNtp.NtpClient.DefaultTimeout">
+            <summary>
+            Default query timeout (1 second).
+            </summary>
+        </member>
+        <member name="F:GuerrillaNtp.NtpClient.Default">
+            <summary>
+            Default instance configured to use <see cref="F:GuerrillaNtp.NtpClient.DefaultEndpoint" /> and <see cref="F:GuerrillaNtp.NtpClient.DefaultTimeout" />.
+            </summary>
+        </member>
+        <member name="P:GuerrillaNtp.NtpClient.Timeout">
+            <summary>
+            Query timeout.
+            </summary>
+            <value>
+            How long to wait for server response. Initialized in constructor.
+            </value>
+        </member>
+        <member name="M:GuerrillaNtp.NtpClient.#ctor(System.Net.EndPoint,System.Nullable{System.TimeSpan})">
+            <summary>
+            Creates new client for SNTP server on given endpoint.
+            </summary>
+            <param name="endpoint">SNTP server endpoint.</param>
+            <param name="timeout">Query timeout. Null to use <see cref="F:GuerrillaNtp.NtpClient.DefaultTimeout"/>.</param>
+        </member>
+        <member name="M:GuerrillaNtp.NtpClient.#ctor">
+            <summary>
+            Creates new client using <see cref="F:GuerrillaNtp.NtpClient.DefaultEndpoint"/> and <see cref="F:GuerrillaNtp.NtpClient.DefaultTimeout"/>.
+            </summary>
+        </member>
+        <member name="M:GuerrillaNtp.NtpClient.#ctor(System.Net.IPAddress,System.Nullable{System.TimeSpan},System.Nullable{System.Int32})">
+            <summary>
+            Creates new client for SNTP server on given IP address.
+            </summary>
+            <param name="ip">IP address of the SNTP server.</param>
+            <param name="timeout">Query timeout. Null to use <see cref="F:GuerrillaNtp.NtpClient.DefaultTimeout"/>.</param>
+            <param name="port">Server port. Null to use <see cref="F:GuerrillaNtp.NtpClient.DefaultPort"/>.</param>
+        </member>
+        <member name="M:GuerrillaNtp.NtpClient.#ctor(System.String,System.Nullable{System.TimeSpan},System.Nullable{System.Int32})">
+            <summary>
+            Creates new client for SNTP server on given host.
+            </summary>
+            <param name="host">DNS name or IP address of the SNTP server.</param>
+            <param name="timeout">Query timeout. Null to use <see cref="F:GuerrillaNtp.NtpClient.DefaultTimeout"/>.</param>
+            <param name="port">Server port. Null to use <see cref="F:GuerrillaNtp.NtpClient.DefaultPort"/>.</param>
+        </member>
+        <member name="P:GuerrillaNtp.NtpClient.Last">
+            <summary>
+            Result of the last NTP query.
+            </summary>
+            <value>
+            Last <see cref="T:GuerrillaNtp.NtpClock"/> returned by <see cref="M:GuerrillaNtp.NtpClient.Query"/> or <see cref="M:GuerrillaNtp.NtpClient.QueryAsync(System.Threading.CancellationToken)"/>.
+            If NTP server has not been queried yet, this property is null.
+            </value>
+            <remarks>
+            <para>
+            Once this property is populated with <see cref="T:GuerrillaNtp.NtpClock"/> that is <see cref="P:GuerrillaNtp.NtpClock.Synchronized"/>,
+            it will be updated only with another <see cref="T:GuerrillaNtp.NtpClock"/> that is also <see cref="P:GuerrillaNtp.NtpClock.Synchronized"/>.
+            This logic is intended to prevent special responses (e.g. Kiss-o'-Death packets),
+            which do not really carry network time, from replacing previously obtained network time.
+            </para>
+            <para>
+            You can use <see cref="F:GuerrillaNtp.NtpClock.LocalFallback"/> as fallback as in
+            <see cref="P:GuerrillaNtp.NtpClient.Last"/> ?? <see cref="F:GuerrillaNtp.NtpClock.LocalFallback"/>.
+            </para>
+            <para>
+            If multiple threads query the NTP server in parallel (not recommended),
+            this property will hold result of whichever query finishes last.
+            This property is safe to access from multiple threads.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:GuerrillaNtp.NtpClient.Query">
+            <summary>
+            Queries the SNTP server.
+            </summary>
+            <returns>Network time source synchronized with the server.</returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown when the server sends invalid response.
+            </exception>
+            <exception cref="T:System.Net.Sockets.SocketException">
+            Thrown when no reply is received before <see cref="P:GuerrillaNtp.NtpClient.Timeout" /> is reached
+            or when there is an error communicating with the server.
+            </exception>
+        </member>
+        <member name="M:GuerrillaNtp.NtpClient.QueryAsync(System.Threading.CancellationToken)">
+            <summary>
+            Queries the SNTP server.
+            </summary>
+            <param name="token">A <see cref="T:System.Threading.CancellationToken"/> used to cancel this request.</param>
+            <returns>Network time source synchronized with the server.</returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown when the server sends invalid response.
+            </exception>
+            <exception cref="T:System.Net.Sockets.SocketException">
+            Thrown when no reply is received before <see cref="P:GuerrillaNtp.NtpClient.Timeout" /> is reached
+            or when there is an error communicating with the server.
+            </exception>
+        </member>
+        <member name="T:GuerrillaNtp.NtpClock">
+            <summary>
+            NTP-synchronized time source.
+            </summary>
+            <remarks>
+            Application can obtain <see cref="T:GuerrillaNtp.NtpClock" /> by calling <see cref="M:GuerrillaNtp.NtpClient.Query" />.
+            <see cref="T:GuerrillaNtp.NtpClock" /> can be also constructed directly from <see cref="T:GuerrillaNtp.NtpResponse" />.
+            Network time is then available from <see cref="P:GuerrillaNtp.NtpClock.UtcNow" /> and <see cref="P:GuerrillaNtp.NtpClock.Now" /> without further network communication.
+            Application can also calculate network time on their own using <see cref="P:GuerrillaNtp.NtpClock.CorrectionOffset" />.
+            </remarks>
+        </member>
+        <member name="M:GuerrillaNtp.NtpClock.#ctor(GuerrillaNtp.NtpResponse)">
+            <summary>
+            NTP-synchronized time source.
+            </summary>
+            <remarks>
+            Application can obtain <see cref="T:GuerrillaNtp.NtpClock" /> by calling <see cref="M:GuerrillaNtp.NtpClient.Query" />.
+            <see cref="T:GuerrillaNtp.NtpClock" /> can be also constructed directly from <see cref="T:GuerrillaNtp.NtpResponse" />.
+            Network time is then available from <see cref="P:GuerrillaNtp.NtpClock.UtcNow" /> and <see cref="P:GuerrillaNtp.NtpClock.Now" /> without further network communication.
+            Application can also calculate network time on their own using <see cref="P:GuerrillaNtp.NtpClock.CorrectionOffset" />.
+            </remarks>
+        </member>
+        <member name="P:GuerrillaNtp.NtpClock.Response">
+            <summary>
+            SNTP response used to calculate network time.
+            </summary>
+            <value>
+            Valid SNTP response. Non-fatal response issues are tolerated and reported via <see cref="P:GuerrillaNtp.NtpClock.Synchronized" />.
+            </value>
+            <remarks>
+            All properties of <see cref="T:GuerrillaNtp.NtpClock" /> are calculated from information in the response.
+            You can find additional detail in the response, including information about accuracy,
+            leap second, and server's preferred poll interval.
+            </remarks>
+        </member>
+        <member name="P:GuerrillaNtp.NtpClock.Synchronized">
+            <summary>
+            Indicates whether reported time is really synchronized.
+            </summary>
+            <value>
+            True if time reported by this object is synchronized via NTP, false otherwise.
+            </value>
+            <remarks>
+            Time might be unsynchronized even after response is successfully received from NTP server.
+            The response might not contain valid network time, for example in the case
+            of Kiss-o'-Death packet, leap indicator set to alarm condition,
+            or other fields indicating NTP server itself is not synchronized.
+            Consult this property to check whether time reported by other properties of this object can be trusted.
+            </remarks>
+        </member>
+        <member name="P:GuerrillaNtp.NtpClock.CorrectionOffset">
+            <summary>
+            Time offset that should be added to local time to calculate network time.
+            </summary>
+            <value>
+            Time difference between server and client. It is positive when local time lags behind network time
+            and negative when local time is ahead of network time.
+            </value>
+            <remarks>
+            Correction offset is calculated from timestamps in the response as <c>0.5 * ((t1 - t0) - (t3 - t2))</c>
+            where t0 is <see cref="P:GuerrillaNtp.NtpResponse.OriginTimestamp" />,
+            t1 is <see cref="P:GuerrillaNtp.NtpResponse.ReceiveTimestamp" />,
+            t2 is <see cref="P:GuerrillaNtp.NtpResponse.TransmitTimestamp" />,
+            and t3 is <see cref="P:GuerrillaNtp.NtpResponse.DestinationTimestamp" />.
+            </remarks>
+            <seealso cref="P:GuerrillaNtp.NtpClock.Now" />
+            <seealso cref="P:GuerrillaNtp.NtpClock.UtcNow"/>
+        </member>
+        <member name="P:GuerrillaNtp.NtpClock.UtcNow">
+            <summary>
+            NTP time in UTC timezone.
+            </summary>
+            <value>
+            NTP time in UTC timezone calculated as <see cref="P:System.DateTimeOffset.UtcNow"/> + <see cref="P:GuerrillaNtp.NtpClock.CorrectionOffset"/>.
+            </value>
+            <remarks>
+            This property returns NTP time as <see cref="T:System.DateTimeOffset"/>.
+            Use its <see cref="P:System.DateTimeOffset.UtcDateTime"/> property To obtain NTP time as <see cref="T:System.DateTime"/>.
+            </remarks>
+            <seealso cref="P:GuerrillaNtp.NtpClock.Now" />
+            <seealso cref="P:GuerrillaNtp.NtpClock.CorrectionOffset"/>
+        </member>
+        <member name="P:GuerrillaNtp.NtpClock.Now">
+            <summary>
+            NTP time in local timezone.
+            </summary>
+            <value>
+            NTP time in local timezone calculated as <see cref="P:System.DateTimeOffset.Now"/> + <see cref="P:GuerrillaNtp.NtpClock.CorrectionOffset"/>.
+            </value>
+            <remarks>
+            This property returns NTP time as <see cref="T:System.DateTimeOffset"/>.
+            Use its <see cref="P:System.DateTimeOffset.LocalDateTime"/> property To obtain NTP time as <see cref="T:System.DateTime"/>.
+            </remarks>
+            <seealso cref="P:GuerrillaNtp.NtpClock.UtcNow"/>
+            <seealso cref="P:GuerrillaNtp.NtpClock.CorrectionOffset" />
+        </member>
+        <member name="P:GuerrillaNtp.NtpClock.RoundTripTime">
+            <summary>
+            Round-trip time to the server.
+            </summary>
+            <value>
+            Time the request spent travelling to the server plus the time the reply spent travelling back.
+            This time can be negative if clock skew occured on the client while NTP server was queried.
+            </value>
+            <remarks>
+            Round-trip time is calculated from timestamps in the packet as <c>(t1 - t0) + (t3 - t2)</c>
+            where t0 is <see cref="P:GuerrillaNtp.NtpResponse.OriginTimestamp" />,
+            t1 is <see cref="P:GuerrillaNtp.NtpResponse.ReceiveTimestamp" />,
+            t2 is <see cref="P:GuerrillaNtp.NtpResponse.TransmitTimestamp" />,
+            and t3 is <see cref="P:GuerrillaNtp.NtpResponse.DestinationTimestamp" />.
+            </remarks>
+        </member>
+        <member name="F:GuerrillaNtp.NtpClock.LocalFallback">
+            <summary>
+            Unsynchronized fallback time source.
+            </summary>
+            <value>
+            An instance of <see cref="T:GuerrillaNtp.NtpClock" /> with zero <see cref="P:GuerrillaNtp.NtpClock.CorrectionOffset" />
+            and with <see cref="P:GuerrillaNtp.NtpClock.Synchronized" /> returning false.
+            </value>
+            <remarks>
+            You can use this fallback when <see cref="P:GuerrillaNtp.NtpClient.Last" /> is null.
+            In C#, that would be <see cref="P:GuerrillaNtp.NtpClient.Last" /> ?? <see cref="F:GuerrillaNtp.NtpClock.LocalFallback" />.
+            </remarks>
+        </member>
+        <member name="T:GuerrillaNtp.NtpException">
+            <summary>
+            Represents errors that occur in SNTP packets or during SNTP operation.
+            </summary>
+        </member>
+        <member name="T:GuerrillaNtp.NtpLeapIndicator">
+            <summary>
+            Represents leap second warning from the server that instructs the client to add or remove leap second.
+            </summary>
+            <seealso cref="P:GuerrillaNtp.NtpResponse.LeapIndicator" />
+            <seealso cref="P:GuerrillaNtp.NtpPacket.LeapIndicator" />
+        </member>
+        <member name="F:GuerrillaNtp.NtpLeapIndicator.NoWarning">
+            <summary>
+            No leap second warning. No action required.
+            </summary>
+        </member>
+        <member name="F:GuerrillaNtp.NtpLeapIndicator.LastMinuteHas61Seconds">
+            <summary>
+            Warns the client that the last minute of the current day has 61 seconds.
+            </summary>
+        </member>
+        <member name="F:GuerrillaNtp.NtpLeapIndicator.LastMinuteHas59Seconds">
+            <summary>
+            Warns the client that the last minute of the current day has 59 seconds.
+            </summary>
+        </member>
+        <member name="F:GuerrillaNtp.NtpLeapIndicator.AlarmCondition">
+            <summary>
+            Special value indicating that the server clock is unsynchronized and the returned time is unreliable.
+            </summary>
+        </member>
+        <member name="T:GuerrillaNtp.NtpMode">
+            <summary>
+            Describes SNTP packet mode, i.e. client or server.
+            </summary>
+            <seealso cref="P:GuerrillaNtp.NtpPacket.Mode" />
+        </member>
+        <member name="F:GuerrillaNtp.NtpMode.Client">
+            <summary>
+            Identifies client-to-server SNTP packet.
+            </summary>
+        </member>
+        <member name="F:GuerrillaNtp.NtpMode.Server">
+            <summary>
+            Identifies server-to-client SNTP packet.
+            </summary>
+        </member>
+        <member name="T:GuerrillaNtp.NtpPacket">
+            <summary>
+            RFC4330 SNTP packet used for communication to and from a network time server.
+            </summary>
+            <remarks>
+            The same data structure represents both request and reply packets.
+            Classes <see cref="T:GuerrillaNtp.NtpRequest" /> and <see cref="T:GuerrillaNtp.NtpResponse" />
+            provide highewr level representation specialized for requests and responses.
+            Most applications should just use <see cref="M:GuerrillaNtp.NtpClient.Query" /> and properties in <see cref="T:GuerrillaNtp.NtpClock" />.
+            </remarks>
+            <seealso cref="T:GuerrillaNtp.NtpRequest" />
+            <seealso cref="T:GuerrillaNtp.NtpResponse" />
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.LeapIndicator">
+            <summary>
+            Leap second indicator.
+            </summary>
+            <value>
+            Leap second warning, if any. Defaults to <see cref="F:GuerrillaNtp.NtpLeapIndicator.NoWarning" />.
+            Special value <see cref="F:GuerrillaNtp.NtpLeapIndicator.AlarmCondition" /> indicates unsynchronized server clock.
+            Response-only property. Leave on default in requests.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.VersionNumber">
+            <summary>
+            SNTP protocol version number.
+            </summary>
+            <value>
+            SNTP protocol version. Defaults to 4, which is the latest version at the time of writing.
+            </value>
+            <remarks>
+            Servers usually reply with the same protocol version.
+            </remarks>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.Mode">
+            <summary>
+            SNTP packet mode, i.e. client or server.
+            </summary>
+            <value>
+            SNTP packet mode. Defaults to <see cref="F:GuerrillaNtp.NtpMode.Client" />, indicating request packet.
+            Server response should have this property set to <see cref="F:GuerrillaNtp.NtpMode.Server" />.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.Stratum">
+            <summary>
+            Server's distance from reference clock.
+            </summary>
+            <value>
+            Response-only property. Leave zeroed in requests.
+            Value 1 indicates primary source connected to hardware clock.
+            Values 2-15 indicate increasing number of hops from primary source.
+            Special value 0 indicates that this packet is a Kiss-o'-Death message
+            with kiss code stored in <see cref="P:GuerrillaNtp.NtpPacket.ReferenceId" />.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.PollInterval">
+            <summary>
+            Server's preferred polling interval.
+            </summary>
+            <value>
+            Polling interval in log₂ seconds, e.g. 4 stands for 16s and 17 means 131,072s.
+            Response-only property. Leave zeroed in requests.
+            </value>
+            <remarks>
+            <see cref="T:GuerrillaNtp.NtpClient" /> does not enforce the polling interval.
+            It is application responsibility to be a good netizen and respect server's policy.
+            </remarks>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.Precision">
+            <summary>
+            Precision of server clock.
+            </summary>
+            <value>
+            Clock precision in log₂ seconds, e.g. -19 for at least microsecond precision.
+            Response-only property. Leave zeroed in requests.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.RootDelay">
+            <summary>
+            Total round-trip delay from the server to the reference clock.
+            </summary>
+            <value>
+            Round-trip delay to the reference clock. Normally a positive value smaller than one second.
+            Response-only property. Leave zeroed in requests.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.RootDispersion">
+            <summary>
+            Estimated error in time reported by the server.
+            </summary>
+            <value>
+            Estimated error in reported time. Normally a positive value smaller than one second.
+            Response-only property. Leave zeroed in requests.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.ReferenceId">
+            <summary>
+            ID of the time source used by the server or Kiss-o'-Death code.
+            </summary>
+            <value>
+            Stratum 1 servers write here one of several special values that describe the kind of hardware clock they use.
+            Stratum 2 and lower servers set this property to IPv4 address of their upstream server.
+            If upstream server has IPv6 address, the address is hashed, because it doesn't fit in this property.
+            When server sets <see cref="P:GuerrillaNtp.NtpPacket.Stratum" /> to special value 0,
+            this property contains so called kiss code that instructs the client to stop querying the server.
+            Response-only property. Leave zeroed in requests.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.ReferenceTimestamp">
+            <summary>
+            Time when the server clock was last set or corrected.
+            </summary>
+            <value>
+            UTC time when the server clock was last set or corrected. Null when not specified.
+            Response-only property. Leave nulled in requests.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.OriginTimestamp">
+            <summary>
+            Time when the client sent its request.
+            </summary>
+            <value>
+            In response packet, this is the UTC time when client sent its request.
+            Servers copy this value from request's <see cref="P:GuerrillaNtp.NtpPacket.TransmitTimestamp" />.
+            Response-only property. Leave nulled in requests.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.ReceiveTimestamp">
+            <summary>
+            Time when the request was received by the server.
+            </summary>
+            <value>
+            UTC time when the server received client's request.
+            Response-only property. Leave nulled in requests.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpPacket.TransmitTimestamp">
+            <summary>
+            Time when the packet was sent.
+            </summary>
+            <value>
+            UTC time when the packet was sent. Both client and server set this property.
+            Default value is <see cref="P:System.DateTime.UtcNow" />.
+            This property can be technically null, but doing so is not recommended.
+            </value>
+        </member>
+        <member name="M:GuerrillaNtp.NtpPacket.Validate">
+            <summary>
+            Checks whether this object describes valid SNTP packet.
+            </summary>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown if this is not a valid SNTP packet.
+            </exception>
+            <remarks>
+            Object properties do not perform validation. Call this method to validate the packet.
+            <see cref="M:GuerrillaNtp.NtpPacket.FromBytes(System.Byte[],System.Int32)" /> and <see cref="M:GuerrillaNtp.NtpPacket.ToBytes" /> perform validation automatically.
+            </remarks>
+        </member>
+        <member name="M:GuerrillaNtp.NtpPacket.FromBytes(System.Byte[],System.Int32)">
+            <summary>
+            Parses and validates SNTP packet.
+            </summary>
+            <param name="buffer">
+            RFC4330 SNTPv4 packet. Previous versions should be also parsed without issue.
+            Extra bytes at the end of the buffer are ignored.
+            </param>
+            <param name="length">Number of bytes in the buffer that are actually filled with data.</param>
+            <returns>
+            Parsed SNTP packet. It has been already validated as if by calling <see cref="M:GuerrillaNtp.NtpPacket.Validate" />.
+            </returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown when the buffer does not contain valid SNTP packet.
+            </exception>
+        </member>
+        <member name="M:GuerrillaNtp.NtpPacket.ToBytes">
+            <summary>
+            Validates and serializes the packet.
+            </summary>
+            <returns>
+            Serialized RFC4330 SNTPv4 packet. Previous versions should be also serialized without issue.
+            </returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown when the packet fails validation as if <see cref="M:GuerrillaNtp.NtpPacket.Validate" /> was called.
+            </exception>
+        </member>
+        <member name="T:GuerrillaNtp.NtpRequest">
+            <summary>
+            RFC4330 SNTP request.
+            </summary>
+            <remarks>
+            This is a low-level API for building SNTP requests, which can then be converted to <see cref="T:GuerrillaNtp.NtpPacket" />.
+            Most applications should just use <see cref="M:GuerrillaNtp.NtpClient.Query" /> and properties in <see cref="T:GuerrillaNtp.NtpClock" />.
+            </remarks>
+            <seealso cref="T:GuerrillaNtp.NtpPacket" />
+            <seealso cref="T:GuerrillaNtp.NtpResponse" />
+        </member>
+        <member name="P:GuerrillaNtp.NtpRequest.TransmitTimestamp">
+            <summary>
+            Time when the request was sent.
+            </summary>
+            <value>
+            UTC time when the request was sent. Defaults to <see cref="P:System.DateTime.UtcNow" />.
+            </value>
+        </member>
+        <member name="M:GuerrillaNtp.NtpRequest.FromPacket(GuerrillaNtp.NtpPacket)">
+            <summary>
+            Converts <see cref="T:GuerrillaNtp.NtpPacket" /> to <see cref="T:GuerrillaNtp.NtpRequest" />.
+            </summary>
+            <param name="packet">Packet that encodes the request.</param>
+            <returns>SNTP request found in the packet.</returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown when the packet does not encode valid SNTP request.
+            </exception>
+        </member>
+        <member name="M:GuerrillaNtp.NtpRequest.ToPacket">
+            <summary>
+            Validates the request and converts it to <see cref="T:GuerrillaNtp.NtpPacket" />.
+            </summary>
+            <returns>Valid SNTP packet encoding the request.</returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown if this is not a valid SNTP request.
+            </exception>
+        </member>
+        <member name="M:GuerrillaNtp.NtpRequest.Validate">
+            <summary>
+            Checks whether this object describes valid SNTP request.
+            </summary>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown if this is not a valid SNTP request.
+            </exception>
+            <remarks>
+            Object properties do not perform validation. Call this method to validate the request.
+            <see cref="M:GuerrillaNtp.NtpRequest.FromPacket(GuerrillaNtp.NtpPacket)" /> and <see cref="M:GuerrillaNtp.NtpRequest.ToPacket" /> perform validation automatically.
+            </remarks>
+        </member>
+        <member name="T:GuerrillaNtp.NtpResponse">
+            <summary>
+            RFC4330 SNTP response.
+            </summary>
+            <remarks>
+            This is a low-level API for examining SNTP responses extracted from <see cref="T:GuerrillaNtp.NtpPacket" />.
+            Most applications should just use <see cref="M:GuerrillaNtp.NtpClient.Query" /> and properties in <see cref="T:GuerrillaNtp.NtpClock" />.
+            In addition to fields found in <see cref="T:GuerrillaNtp.NtpPacket" />, this object also carries <see cref="P:GuerrillaNtp.NtpResponse.DestinationTimestamp" />,
+            which is essential to calculation of <see cref="T:GuerrillaNtp.NtpClock" />.
+            </remarks>
+            <seealso cref="T:GuerrillaNtp.NtpClock" />
+            <seealso cref="T:GuerrillaNtp.NtpPacket" />
+            <seealso cref="T:GuerrillaNtp.NtpRequest" />
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.LeapIndicator">
+            <summary>
+            Leap second indicator.
+            </summary>
+            <value>
+            Leap second warning, if any. Defaults to <see cref="F:GuerrillaNtp.NtpLeapIndicator.NoWarning" />.
+            Special value <see cref="F:GuerrillaNtp.NtpLeapIndicator.AlarmCondition" /> indicates unsynchronized server clock.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.Stratum">
+            <summary>
+            Server's distance from reference clock.
+            </summary>
+            <value>
+            Value 1 indicates primary source connected to hardware clock.
+            Values 2-15 indicate increasing number of hops from primary source.
+            Special value 0 indicates that this packet is a Kiss-o'-Death message
+            with kiss code stored in <see cref="P:GuerrillaNtp.NtpResponse.ReferenceId" />.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.PollInterval">
+            <summary>
+            Server's preferred polling interval.
+            </summary>
+            <value>
+            Polling interval in log₂ seconds, e.g. 4 stands for 16s and 17 means 131,072s.
+            </value>
+            <remarks>
+            <see cref="T:GuerrillaNtp.NtpClient" /> does not enforce the polling interval.
+            It is application responsibility to be a good netizen and respect server's policy.
+            </remarks>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.Precision">
+            <summary>
+            Precision of server clock.
+            </summary>
+            <value>
+            Clock precision in log₂ seconds, e.g. -19 for at least microsecond precision.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.RootDelay">
+            <summary>
+            Total round-trip delay from the server to the reference clock.
+            </summary>
+            <value>
+            Round-trip delay to the reference clock. Normally a positive value smaller than one second.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.RootDispersion">
+            <summary>
+            Estimated error in time reported by the server.
+            </summary>
+            <value>
+            Estimated error in reported time. Normally a positive value smaller than one second.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.ReferenceId">
+            <summary>
+            ID of the time source used by the server or Kiss-o'-Death code.
+            </summary>
+            <value>
+            Stratum 1 servers write here one of several special values that describe the kind of hardware clock they use.
+            Stratum 2 and lower servers set this property to IPv4 address of their upstream server.
+            If upstream server has IPv6 address, the address is hashed, because it doesn't fit in this property.
+            When server sets <see cref="P:GuerrillaNtp.NtpResponse.Stratum" /> to special value 0,
+            this property contains so called kiss code that instructs the client to stop querying the server.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.ReferenceTimestamp">
+            <summary>
+            Time when the server clock was last set or corrected.
+            </summary>
+            <value>
+            UTC time when the server clock was last set or corrected. Null when not specified.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.OriginTimestamp">
+            <summary>
+            Time when the client sent its request.
+            </summary>
+            <value>
+            UTC time when client sent its request.
+            Servers copy this value from request's <see cref="P:GuerrillaNtp.NtpRequest.TransmitTimestamp" />.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.ReceiveTimestamp">
+            <summary>
+            Time when the request was received by the server.
+            </summary>
+            <value>
+            UTC time when the server received client's request.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.TransmitTimestamp">
+            <summary>
+            Time when the response was sent.
+            </summary>
+            <value>
+            UTC time when the server sent its response.
+            </value>
+        </member>
+        <member name="P:GuerrillaNtp.NtpResponse.DestinationTimestamp">
+            <summary>
+            Time when the response was received.
+            </summary>
+            <value>
+            UTC time when the response was received by the client.
+            </value>
+            <remarks>
+            This property is not part of the protocol. It is added when response packet is received.
+            </remarks>
+        </member>
+        <member name="M:GuerrillaNtp.NtpResponse.FromPacket(GuerrillaNtp.NtpPacket,System.DateTime)">
+            <summary>
+            Converts <see cref="T:GuerrillaNtp.NtpPacket" /> to <see cref="T:GuerrillaNtp.NtpResponse" />.
+            </summary>
+            <param name="packet">Packet that encodes the response.</param>
+            <param name="time">
+            UTC time when the response was received. It will be assigned to <see cref="P:GuerrillaNtp.NtpResponse.DestinationTimestamp" />.
+            </param>
+            <returns>SNTP response found in the packet.</returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown when the packet does not encode valid SNTP response or reception time is not in UTC.
+            </exception>
+        </member>
+        <member name="M:GuerrillaNtp.NtpResponse.FromPacket(GuerrillaNtp.NtpPacket)">
+            <summary>
+            Converts just received <see cref="T:GuerrillaNtp.NtpPacket" /> to <see cref="T:GuerrillaNtp.NtpResponse" />.
+            </summary>
+            <param name="packet">Packet that encodes the response.</param>
+            <returns>
+            SNTP response found in the packet. <see cref="P:GuerrillaNtp.NtpResponse.DestinationTimestamp" /> is set to <see cref="P:System.DateTime.UtcNow" />.
+            </returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown when the packet does not encode valid SNTP response.
+            </exception>
+        </member>
+        <member name="M:GuerrillaNtp.NtpResponse.ToPacket">
+            <summary>
+            Validates the response and converts it to <see cref="T:GuerrillaNtp.NtpPacket" />.
+            </summary>
+            <returns>Valid SNTP packet encoding the response.</returns>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown if this is not a valid SNTP response.
+            </exception>
+        </member>
+        <member name="M:GuerrillaNtp.NtpResponse.Validate">
+            <summary>
+            Checks whether this object describes valid SNTP response.
+            </summary>
+            <exception cref="T:GuerrillaNtp.NtpException">
+            Thrown if this is not a valid SNTP response.
+            </exception>
+            <remarks>
+            Object properties do not perform validation. Call this method to validate the response.
+            <see cref="M:GuerrillaNtp.NtpResponse.FromPacket(GuerrillaNtp.NtpPacket)" /> and <see cref="M:GuerrillaNtp.NtpResponse.ToPacket" /> perform validation automatically.
+            </remarks>
+        </member>
+        <member name="M:GuerrillaNtp.NtpResponse.Matches(GuerrillaNtp.NtpRequest)">
+            <summary>
+            Check whether this is a response to the given request.
+            </summary>
+            <param name="request">Request that this response might be answering.</param>
+            <returns>True if this appears to be a response to the request, false otherwise.</returns>
+        </member>
+    </members>
+</doc>

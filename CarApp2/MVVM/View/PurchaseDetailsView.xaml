@@ -1,0 +1,111 @@
+﻿<UserControl x:Class="CarApp2.MVVM.View.PurchaseDetailsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+              xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+             xmlns:local="clr-namespace:CarApp2.MVVM.View"
+             mc:Ignorable="d" 
+                     d:DesignHeight="450" d:DesignWidth="800" Background="Transparent">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="323*"/>
+            <ColumnDefinition Width="77*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="223*"/>
+            <RowDefinition Height="227*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.RowSpan="2" Grid.ColumnSpan="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="49*"/>
+                <RowDefinition Height="401*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+        </Grid>
+
+        <Border CornerRadius="0,10,10,0"  Grid.RowSpan="2" Grid.ColumnSpan="2">
+
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0.9,1">
+                    <GradientStop Color="White" Offset="0" />
+                    <GradientStop Color="CornflowerBlue" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <!--caption-->
+            <StackPanel 
+Orientation="Horizontal"
+VerticalAlignment="Top" Height="20" Margin="10,10,-10,0">
+
+
+
+                <fa:IconImage Icon="Archive"
+    Height="20"
+    Width="20"
+    Foreground="{StaticResource titleColor3}"
+    Margin="35,0,10,0"/>
+                <TextBlock Text="Purchase Deatails"
+        Foreground="{StaticResource titleColor3}"
+        FontSize="16"
+        FontFamily="Medium"
+        VerticalAlignment="Center"/>
+
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.ColumnSpan="2" Margin="0,0,10,4" Grid.RowSpan="2">
+            <Grid Height="446" Width="816">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="23*"/>
+                    <RowDefinition Height="167*"/>
+                    <RowDefinition Height="256*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="223*"/>
+                    <ColumnDefinition Width="593*"/>
+                </Grid.ColumnDefinitions>
+                <ComboBox Name="comboBoxSearch" Margin="163,6,262,132" IsEditable="True" StaysOpenOnEdit="True" BorderThickness="4" BorderBrush="Black" Background="#3b529d" DropDownOpened="comboBoxSearch_DropDownOpened" KeyUp="comboBoxSearch_KeyUp" Style="{StaticResource ComboBoxFlatStyle}" Grid.ColumnSpan="2" Grid.Row="1">
+                </ComboBox>
+
+                <DataGrid Name="DataGridEdetails" AutoGenerateColumns="True" Margin="10,62,10,37" Background="CornflowerBlue" SelectionChanged="DataGridEdetails_SelectionChanged" Grid.ColumnSpan="2" Grid.Row="1">
+                </DataGrid>
+
+                <Button x:Name="btnSearch" BorderThickness="1" Content="Search" Foreground="White" FontSize="12" FontFamily="Montserrat" Cursor="Hand" Margin="299,16,134,124"  Grid.Column="1" Grid.RowSpan="2" Click="btnSearch_Click">
+                    <Button.Style>
+                        <Style TargetType="{x:Type Button}">
+                            <Setter Property="Background" Value="#3b529d"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="BlueViolet"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <Button.Template>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border Width="90" Height="20" CornerRadius="10" Background="{TemplateBinding Background}" Margin="5,2,-8,1">
+                                <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+
+
+
+                <TextBlock Text="Vehicle ID :" Foreground="Black" FontSize="15" FontWeight="Medium" FontFamily="Montserrat" Margin="16,147,87,211" Grid.Row="1" Grid.RowSpan="2"/>
+                <TextBox x:Name="txtCarID" Background="Transparent" FontSize="13" FontWeight="Medium" FontFamily="Montserrat" Foreground="Black" CaretBrush="Black" BorderBrush="Black" BorderThickness="0,0,0,2" Margin="124,135,486,0" VerticalContentAlignment="Center" Padding="20,0,0,0" Grid.ColumnSpan="2" Grid.Row="1"/>
+                <TextBox x:Name="txtName" Background="Transparent" FontSize="13" FontWeight="Medium" FontFamily="Montserrat" Foreground="Black" CaretBrush="Black" BorderBrush="Black" BorderThickness="0,0,0,2" Margin="124,22,486,202" VerticalContentAlignment="Center" Padding="20,0,0,0" Grid.ColumnSpan="2" Grid.Row="2"/>
+                <TextBlock Text="Name :" Foreground="Black" FontSize="15" FontWeight="Medium" FontFamily="Montserrat" Margin="16,34,87,157" Grid.Row="2"/>
+                <TextBlock Text="Price :" Foreground="Black" FontSize="15" FontWeight="Medium" FontFamily="Montserrat" Margin="16,86,87,105" Grid.Row="2"/>
+                <TextBox x:Name="txtName_Copy" Background="Transparent" FontSize="13" FontWeight="Medium" FontFamily="Montserrat" Foreground="Black" CaretBrush="Black" BorderBrush="Black" BorderThickness="0,0,0,2" Margin="124,22,486,202" VerticalContentAlignment="Center" Padding="20,0,0,0" Grid.ColumnSpan="2" Grid.Row="2"/>
+                <TextBox x:Name="txtPrice" Background="Transparent" FontSize="13" FontWeight="Medium" FontFamily="Montserrat" Foreground="Black" CaretBrush="Black" BorderBrush="Black" BorderThickness="0,0,0,2" Margin="124,72,486,152" VerticalContentAlignment="Center" Padding="20,0,0,0" Grid.ColumnSpan="2" Grid.Row="2"/>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</UserControl>
